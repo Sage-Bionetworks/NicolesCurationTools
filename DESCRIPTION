@@ -1,0 +1,27 @@
+Package: NicolesCurationTools
+Title: Nicole's Data Curation Tools
+Version: 0.0.0.9000
+Authors@R: 
+    c(person(given = "Nicole",
+             family = "Kauer",
+             role = c("aut", "cre"),
+             email = "nicole.kauer@sagebase.org"),
+      person(given = "Sage Bionetworks",
+             role = "cph"))
+Description: Various data curation tools.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Depends:
+    R (>= 3.4)
+Imports:
+    readxl,
+    synapser,
+    tibble    
+Remotes:
+Suggests: 
+    devtools,
+    lintr,
+    styler,
+    testthat
+    
