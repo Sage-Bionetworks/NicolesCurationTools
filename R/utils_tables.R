@@ -40,21 +40,30 @@ remove_na_rows <- function(data, columns = NULL) {
 #' @param project_id synID for the project the table should be uploaded to, if
 #'   table needs to be created.
 #' @param name Desired table name, if table needs to be created.
+#' @param overwrite If overwrite is `TRUE`, the table contents will be deleted
+#'   and the new data uploaded in its place. Note that the schema will not
+#'   be updated so the new data must follow the same schema. If `FALSE`, the
+#'   new data will be joined to the current table.
 #' @param ... Additional parameters sent to [synapser::synStore()]
 #' @return Synapse table entity
 save_table_to_synapse <- function(data, table_id = NULL, project_id = NULL,
-                                  name = NULL, ...) {
+                                  name = NULL, overwrite = FALSE, ...) {
   if (is.null(table_id)) {
     table <- synapser::synBuildTable(name, project_id, data)
     synapser::synStore(table)
   } else {
-    table <- synTableQuery(sprintf("select * from %s", table_id))
-    table_df <- as.data.frame(table)
-    # Won't work correctly once data is up
-    table_df <- dplyr::left_join(all_studies_metadata_joined, table_df)
-    # Rearrange rows
-    table_df <- table_df[, c("ROW_ID", "ROW_VERSION", "study", "individualID", "specimenID", "assay", "species")]
-    table_new <- Table(table_id, table_df)
-    table <- synStore(table_new)
+    # Allow for either overwriting the table or adding to table
+    if (overwrite) {
+      table <- synapser::synTableQuery(sprintf("select * from %s", table_id))
+      synapser::synDelete(table)
+      table <- synapser::Table(table_id, data)
+      synapser::synStore(table)
+    } else {
+      table <- synapser::synTableQuery(sprintf("select * from %s", table_id))
+      table_df <- table$asDataFrame()
+      table_df <- dplyr::full_join(table_df, data)
+      table_new <- synapser::Table(table_id, table_df)
+      table <- synapser::synStore(table_new, ...)
+    }
   }
 }

@@ -2,7 +2,7 @@
 #'
 #' @description Logs user into Synapse.
 #'
-#' @params Additional parameters sent on to [synapser::synLogin()]
+#' @param ... Additional parameters sent on to [synapser::synLogin()]
 #' @return NULL
 log_into_synapse <- function(...) {
   synapser::synLogin(...)

@@ -9,6 +9,7 @@ save_table_to_synapse(
   table_id = NULL,
   project_id = NULL,
   name = NULL,
+  overwrite = FALSE,
   ...
 )
 }
@@ -22,6 +23,11 @@ created first.}
 table needs to be created.}
 
 \item{name}{Desired table name, if table needs to be created.}
+
+\item{overwrite}{If overwrite is `TRUE`, the table contents will be deleted
+and the new data uploaded in its place. Note that the schema will not
+be updated so the new data must follow the same schema. If `FALSE`, the
+new data will be joined to the current table.}
 
 \item{...}{Additional parameters sent to [synapser::synStore()]}
 }

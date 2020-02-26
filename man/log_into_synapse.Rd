@@ -6,6 +6,9 @@
 \usage{
 log_into_synapse(...)
 }
+\arguments{
+\item{...}{Additional parameters sent on to [synapser::synLogin()]}
+}
 \description{
 Logs user into Synapse.
 }
