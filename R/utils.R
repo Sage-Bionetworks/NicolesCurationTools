@@ -34,3 +34,14 @@ get_file_data <- function(path) {
     xls = readxl::read_xls(path, col_types = "text")
   )
 }
+
+#' @title Convert Synapse annotation dictionary to a list
+#'
+#' @description Convert Synapse annotation dictionary to a list.
+#'
+#' @param annotations Annotations dictionary from Synapse.
+#' @return List of annotations.
+dict_to_list <- function(annotations) {
+  values <- purrr::map(names(annotations), function(y) annotations$get(y))
+  stats::setNames(values, names(annotations))
+}

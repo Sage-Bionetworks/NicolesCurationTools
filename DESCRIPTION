@@ -16,6 +16,7 @@ Depends:
     R (>= 3.4)
 Imports:
     readxl,
+    stats,
     synapser,
     tibble    
 Remotes:
@@ -24,4 +25,4 @@ Suggests:
     lintr,
     styler,
     testthat
-    
+RoxygenNote: 7.0.2
