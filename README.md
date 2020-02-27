@@ -2,6 +2,7 @@
 # NicolesCurationTools
 
 <!-- badges: start -->
+[![Lifecycle:experimental](https://image.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental)
 <!-- badges: end -->
 
 The goal of NicolesCurationTools is to facilitate data curation. For example,

@@ -9,6 +9,7 @@
 #' @param columns The columns to compare for `NA` values.
 #' @return The data without rows that are `NA` across the given columns.
 #' @examples
+#' \dontrun{
 #' dat <- data.frame(
 #'   foo = c("bar0", NA, NA, "bar3"),
 #'   bar = c(NA, "foo1", NA, "foo3")
@@ -16,6 +17,7 @@
 #' dat1 <- remove_na_rows(dat)
 #' dat2 <- remove_na_rows(dat, "foo")
 #' dat3 <- remove_na_rows(dat, c("foo", "bar"))
+#' }
 remove_na_rows <- function(data, columns = NULL) {
   if (is.null(columns)) {
     na_rows <- apply(data, 1, function(x) {

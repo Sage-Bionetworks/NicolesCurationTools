@@ -20,6 +20,7 @@ rows in which all columns given have `NA`. If columns is `NULL`, then will
 remove rows that are `NA` across all columns.
 }
 \examples{
+\dontrun{
 dat <- data.frame(
   foo = c("bar0", NA, NA, "bar3"),
   bar = c(NA, "foo1", NA, "foo3")
@@ -27,4 +28,5 @@ dat <- data.frame(
 dat1 <- remove_na_rows(dat)
 dat2 <- remove_na_rows(dat, "foo")
 dat3 <- remove_na_rows(dat, c("foo", "bar"))
+}
 }

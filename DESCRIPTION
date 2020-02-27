@@ -25,8 +25,8 @@ Imports:
     tibble,
     tidyr
 Remotes:
-    Sage-Bionetworks/PythonEmbedInR,
-    Sage-Bionetworks/synapser
+    github::Sage-Bionetworks/PythonEmbedInR,
+    github::Sage-Bionetworks/synapser
 Suggests: 
     devtools,
     lintr,
