@@ -17,6 +17,7 @@ Depends:
 Imports:
     dplyr,
     purrr,
+    PythonEmbedInR,
     readr,
     readxl,
     stats,
@@ -24,6 +25,8 @@ Imports:
     tibble,
     tidyr
 Remotes:
+    Sage-Bionetworks/PythonEmbedInR,
+    Sage-Bionetworks/synapser
 Suggests: 
     devtools,
     lintr,
