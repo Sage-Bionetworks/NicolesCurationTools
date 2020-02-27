@@ -4,6 +4,7 @@
 #' rows in which all columns given have `NA`. If columns is `NULL`, then will
 #' remove rows that are `NA` across all columns.
 #'
+#' @export
 #' @param data Data frame with metadata
 #' @param columns The columns to compare for `NA` values.
 #' @return The data without rows that are `NA` across the given columns.
@@ -22,7 +23,7 @@ remove_na_rows <- function(data, columns = NULL) {
     })
     data[!na_rows, ]
   } else {
-    na_in_cols <- purrr::map(columns, function (x) {
+    na_in_cols <- purrr::map(columns, function(x) {
       which(is.na(data[x]))
     })
     na_rows <- Reduce(intersect, na_in_cols)
@@ -34,6 +35,7 @@ remove_na_rows <- function(data, columns = NULL) {
 #'
 #' @description Save table to Synapse.
 #'
+#' @export
 #' @param data Data frame with metadata
 #' @param table_id synID for the table. If `NULL`, assumes the table needs to be
 #'   created first.

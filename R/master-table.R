@@ -3,10 +3,12 @@
 #' @description Append column named 'study' to data, with all values as the
 #'   study name. Does not change the data if a 'study' column already exists.
 #'
+#' @export
 #' @param data Data frame or tibble.
 #' @param name Name of the study.
 #' @return Tibble with the data and appended study column.
 #' @examples
+#' \dontrun{
 #' dat <- data.frame(
 #'   foo = c("bar0", "bar1", "bar2"),
 #'   bar = c("foo0", "foo1", "foo2")
@@ -15,6 +17,7 @@
 #' # Now has study column so cannot change study column
 #' # value with this function
 #' study_dat <- append_column_study(study_dat, "neato_study")
+#' }
 append_column_study <- function(data, name) {
   if (!("study" %in% names(data))) {
     data <- tibble::add_column(data, study = name)
@@ -47,7 +50,6 @@ get_all_metadata_folder_info <- function(parent) {
       get_study_metadata_folder_info(study, study$name)
     }
   )
-
 }
 
 #' @title Get all metadata folder information helper
@@ -147,13 +149,15 @@ create_study_table <- function(study_view, study_name, keys) {
     study_view$id,
     study_view$name,
     function(id, name) {
-      get_metadata_file_and_annotations(id, name, keys)
+      get_file_data_annots(id, name, keys)
     }
   )
-  not_null <- purrr::map_lgl(all_files_annots, function(x) {!is.null(x)})
+  not_null <- purrr::map_lgl(all_files_annots, function(x) {
+    !is.null(x)
+  })
   all_files_annots <- all_files_annots[not_null]
   if (length(all_files_annots) > 0) {
-    has_both_ids <- purrr::map_lgl(all_files_annots, function (x) {
+    has_both_ids <- purrr::map_lgl(all_files_annots, function(x) {
       all(c("individualID", "specimenID") %in% names(x))
     })
     new_order <- c(which(has_both_ids), which(!has_both_ids))
@@ -184,14 +188,16 @@ create_study_table <- function(study_view, study_name, keys) {
 #' @return Named list where `metadata` refers to a dataframe with the file's
 #'   metadata, and `annotations` refers to a tibble with the file's non-null
 #'   annotations
-get_metadata_file_and_annotations <- function(file_id, file_name, keys) {
+get_file_data_annots <- function(file_id, file_name, keys) {
   file_info <- synapser::synGet(file_id)
   metadata <- get_file_data(file_info$path)
   if (is.null(metadata)) {
     return(NULL)
   }
   annots <- dict_to_list(file_info$annotations)
-  annots <- annots[!purrr::map_lgl(annots, function(x) {is.null(x)})]
+  annots <- annots[!purrr::map_lgl(annots, function(x) {
+    is.null(x)
+  })]
   annots <- tibble::as_tibble(annots)
   if ("assay" %in% names(annots) && !("assay" %in% names(metadata))) {
     metadata <- tibble::add_column(metadata, assay = annots$assay)
@@ -218,19 +224,22 @@ get_metadata_file_and_annotations <- function(file_id, file_name, keys) {
 #'         |_ metadata_folder
 #'              |_ metadata_file_3
 #'
+#' @export
 #' @param parent Parent synID that holds study folders for a model.
 #' @param keys The names of the columns that are wanted in the table.
 #' @return The master data table.
-generate_model_master_table <- function(parent, keys = c("individualID",
-                                                         "specimenID",
-                                                         "assay",
-                                                         "species")) {
+generate_model_master_table <- function(parent, keys = c(
+                                          "individualID",
+                                          "specimenID",
+                                          "assay",
+                                          "species"
+                                        )) {
   metadata_folders <- get_all_metadata_folder_info(parent)
   # Get all metadata file information
   metadata_files <- purrr::map2_dfr(
     metadata_folders$id,
     metadata_folders$study,
-    function(id, study){
+    function(id, study) {
       get_metadata_file_info(id, study)
     }
   )
@@ -253,5 +262,3 @@ generate_model_master_table <- function(parent, keys = c("individualID",
     c("specimenID", "individualID")
   )
 }
-
-

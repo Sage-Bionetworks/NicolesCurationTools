@@ -15,10 +15,14 @@ LazyData: true
 Depends:
     R (>= 3.4)
 Imports:
+    dplyr,
+    purrr,
+    readr,
     readxl,
     stats,
     synapser,
-    tibble    
+    tibble,
+    tidyr
 Remotes:
 Suggests: 
     devtools,

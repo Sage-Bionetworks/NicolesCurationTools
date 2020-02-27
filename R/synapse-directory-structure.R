@@ -3,6 +3,7 @@
 #' @description Get a list of the child folders/files within a Synapse parent
 #' folder.
 #'
+#' @export
 #' @param parent The synID of the parent folder.
 #' @return Synapse entity list with child folders/files.
 #' @examples
@@ -20,6 +21,7 @@ get_children <- function(parent) {
 #'
 #' @description Move a Synapse folder or file to new parent folder.
 #'
+#' @export
 #' @param id synID of the folder or file to move.
 #' @param parent_id synID of the new folder to move the folder or file to.
 #' @return The Synapse entity that was stored in a new location.

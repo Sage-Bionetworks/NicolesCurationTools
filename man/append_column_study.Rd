@@ -19,6 +19,7 @@ Append column named 'study' to data, with all values as the
   study name. Does not change the data if a 'study' column already exists.
 }
 \examples{
+\dontrun{
 dat <- data.frame(
   foo = c("bar0", "bar1", "bar2"),
   bar = c("foo0", "foo1", "foo2")
@@ -27,4 +28,5 @@ study_dat <- append_column_study(dat, "cool_study")
 # Now has study column so cannot change study column
 # value with this function
 study_dat <- append_column_study(study_dat, "neato_study")
+}
 }

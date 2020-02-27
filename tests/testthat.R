@@ -1,4 +1,4 @@
 library(testthat)
-library(mastertable)
+library(NicolesCurationTools)
 
-test_check("mastertable")
+test_check("NicolesCurationTools")
