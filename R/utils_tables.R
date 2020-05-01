@@ -59,9 +59,9 @@ save_table_to_synapse <- function(data, table_id = NULL, project_id = NULL,
     # Allow for either overwriting the table or adding to table
     if (overwrite) {
       table <- synapser::synTableQuery(sprintf("select * from %s", table_id))
+      newtable <- synapser::Table(table_id, data)
       synapser::synDelete(table)
-      table <- synapser::Table(table_id, data)
-      synapser::synStore(table)
+      synapser::synStore(newtable)
     } else {
       table <- synapser::synTableQuery(sprintf("select * from %s", table_id))
       table_df <- table$asDataFrame()

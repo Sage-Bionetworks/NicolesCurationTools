@@ -19,10 +19,8 @@
 #' study_dat <- append_column_study(study_dat, "neato_study")
 #' }
 append_column_study <- function(data, name) {
-  if (!("study" %in% names(data))) {
+  if (!is.null(data) && nrow(data) > 0 && !("study" %in% names(data))) {
     data <- tibble::add_column(data, study = name)
-  } else {
-    stop("study column already exists")
   }
   data
 }
@@ -164,18 +162,24 @@ create_study_table <- function(study_view, study_name, keys) {
     if (length(new_order) > 0) {
       all_files_annots <- all_files_annots[new_order]
     }
-    study_metadata <- Reduce(dplyr::full_join, all_files_annots)
-    study_metadata <- append_column_study(study_metadata, study_name)
-    study_metadata <- remove_na_rows(study_metadata)
-    study_metadata
-  } else if (length(all_files_annots) == 0) {
-    study_metadata <- all_files_annots[1]
-    study_metadata <- append_column_study(study_metadata, study_name)
-    remove_na_rows(study_metadata)
+    ## TERRIBLE WAY TO DO THIS
+    tryCatch({
+      study_metadata <- Reduce(dplyr::full_join, all_files_annots)
+      study_metadata <- append_column_study(study_metadata, study_name)
+      # Remove duplicate rows
+      study_metadata <- dplyr::distinct(study_metadata)
+      # study_metadata <- remove_na_rows(study_metadata)
+      return(study_metadata)
+    }, error = function(err) {
+      study_metadata <- dplyr::bind_rows(all_files_annots)
+      study_metadata <- append_column_study(study_metadata, study_name)
+      # Remove duplicate rows
+      study_metadata <- dplyr::distinct(study_metadata)
+      return(study_metadata)
+    })
   } else {
-    study_metadata <- NULL
+    return(NULL)
   }
-  study_metadata
 }
 
 #' @title Get data and annotations from metadata file
@@ -189,26 +193,39 @@ create_study_table <- function(study_view, study_name, keys) {
 #'   metadata, and `annotations` refers to a tibble with the file's non-null
 #'   annotations
 get_file_data_annots <- function(file_id, file_name, keys) {
-  file_info <- synapser::synGet(file_id)
-  metadata <- get_file_data(file_info$path)
-  if (is.null(metadata)) {
+  tryCatch({
+    file_info <- synapser::synGet(file_id)
+    metadata <- get_file_data(file_info$path)
+    if (is.null(metadata)) {
+      return(NULL)
+    }
+    annots <- dict_to_list(file_info$annotations)
+    annots <- annots[!purrr::map_lgl(annots, function(x) {
+      is.null(x)
+    })]
+    annots <- tibble::as_tibble(annots)
+    if ("assay" %in% names(annots) && !("assay" %in% names(metadata))) {
+      metadata <- tibble::add_column(metadata, assay = annots$assay)
+    }
+    if ("study" %in% names(annots) && !("study" %in% names(metadata))) {
+      metadata <- tibble::add_column(metadata, study = annots$study)
+    }
+    if ("Participant ID" %in% names(metadata)) {
+      names(metadata)[which(names(metadata) == "Participant ID")] <-
+        "individualID"
+    }
+    keys_present <- keys[keys %in% names(metadata)]
+    if (length(keys_present) > 0) {
+      metadata <- metadata[, keys_present]
+      metadata
+    } else {
+      return(NULL)
+    }
+  },
+  error = function(err) {
+    # If couldn't get file, just return NULL
     return(NULL)
-  }
-  annots <- dict_to_list(file_info$annotations)
-  annots <- annots[!purrr::map_lgl(annots, function(x) {
-    is.null(x)
-  })]
-  annots <- tibble::as_tibble(annots)
-  if ("assay" %in% names(annots) && !("assay" %in% names(metadata))) {
-    metadata <- tibble::add_column(metadata, assay = annots$assay)
-  }
-  keys_present <- keys[keys %in% names(metadata)]
-  if (length(keys_present) > 0) {
-    metadata <- metadata[, keys_present]
-    metadata
-  } else {
-    return(NULL)
-  }
+  })
 }
 
 #' @title Generate master table for model
@@ -232,7 +249,8 @@ generate_model_master_table <- function(parent, keys = c(
                                           "individualID",
                                           "specimenID",
                                           "assay",
-                                          "species"
+                                          "species",
+                                          "study"
                                         )) {
   metadata_folders <- get_all_metadata_folder_info(parent)
   # Get all metadata file information
@@ -253,12 +271,44 @@ generate_model_master_table <- function(parent, keys = c(
       study_name,
       keys = keys
     )
+    if (!is.null(study_metadata)) {
+      dplyr::distinct(study_metadata)
+    }
+    if (all(c("individualID", "specimenID") %in% names(study_metadata))) {
+      remove_na_rows(study_metadata, c("individualID", "specimenID"))
+    }
     study_metadata
   })
+  is_not_null <- purrr::map_lgl(all_studies_metadata, function(x) {
+    !is.null(x)
+  })
+  all_studies_metadata <- all_studies_metadata[is_not_null]
   all_studies_metadata_joined <- Reduce(dplyr::full_join, all_studies_metadata)
+  # Remove duplicate rows
+  all_studies_metadata_joined <- dplyr::distinct(all_studies_metadata_joined)
   # Remove all rows that do not have either specimenID nor individualID
   all_studies_metadata_joined <- remove_na_rows(
     all_studies_metadata_joined,
     c("specimenID", "individualID")
   )
+}
+
+#' @title Add IDs from annotations via fileview
+#'
+#' @description Add specimenIDs and individualIDs to master table from a
+#' fileview with all files. This should have annotations in the schema.
+#'
+#' @param data Data frame or tibble to join the columns from the fileview with.
+#' @param fileview_id Synapse ID for the fileview.
+#' @param join_cols Columns in the fileview that should be in the master table.
+add_ids_fileview <- function(data, fileview_id, join_cols) {
+  # Strip Synapse columns from data if exist
+  if (any(c("ROW_ID", "ROW_VERSION") %in% names(data))) {
+    data <- data[, !(names(data) %in% c("ROW_ID", "ROW_VERSION"))]
+  }
+  # Get fileview and strip only the important columns from the fileview
+  view <- synapser::synTableQuery(sprintf("select * from %s", fileview_id))
+  view <- view$asDataFrame()
+  view <- view[, join_cols]
+  dplyr::full_join(data, view)
 }
