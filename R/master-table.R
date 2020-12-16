@@ -25,75 +25,6 @@ append_column_study <- function(data, name) {
   data
 }
 
-#' @title Get all metadata folder information
-#'
-#' @description Get all metadata folder information.
-#'  Synapse directory structure is expected to be:
-#'   parent_folder
-#'     |_study_folder
-#'     |   |_ metadata_folder
-#'     |        |_ metadata_file_1
-#'     |        |_ metadata_file_2
-#'     |_study_folder
-#'         |_ metadata_folder
-#'              |_ metadata_file_3
-#'
-#' @param parent synID for the parent folder.
-#' @return Dataframe with the metadata folder information.
-get_all_metadata_folder_info <- function(parent) {
-  studies <- get_children(parent)
-  metadata_folders <- purrr::map_dfr(
-    studies,
-    function(study) {
-      get_study_metadata_folder_info(study, study$name)
-    }
-  )
-}
-
-#' @title Get all metadata folder information helper
-#'
-#' @description Get study metadata folder information. Helper function for
-#' [get_all_metadata_folder_info()]. Assumes the directory structure looks like:
-#'     study_folder
-#'       |_ metadata_folder
-#'           |_ metadata_file_1
-#'           |_ metadata_file_2
-#'
-#' @param study The synID for the study folder.
-#' @param study_name Name of the study.
-#' @return Dataframe with the metadata folder information.
-get_study_metadata_folder_info <- function(study, study_name) {
-  study_children <- get_children(study$id)
-  # Check if there were any subfolders in the study folder
-  if (!is.null(study)) {
-    is_metadata_folder <- purrr::map_lgl(
-      study_children,
-      function(sub_folder) {
-        sub_folder$name == "Metadata"
-      }
-    )
-    metadata_folder <- study_children[is_metadata_folder]
-    if (length(metadata_folder) == 0) {
-      return(NULL)
-    } else {
-      metadata_folder <- tibble::enframe(unlist(metadata_folder))
-      metadata_folder <- tibble::add_row(
-        metadata_folder,
-        name = "study",
-        value = study_name
-      )
-      metadata_folder <- tidyr::spread(
-        metadata_folder,
-        key = name,
-        value = value
-      )
-    }
-  } else {
-    return(NULL)
-  }
-  metadata_folder
-}
-
 #' @title Get metadata file information
 #'
 #' @description Get metadata file information. Assumes the directory structure
@@ -106,10 +37,10 @@ get_study_metadata_folder_info <- function(study, study_name) {
 #' @param study_name Name of the study.
 #' @return Dataframe with all the metadata file information.
 get_metadata_file_info <- function(folder_id, study_name) {
-  if (is.null(folder_id)) {
+  if (is.null(folder_id) || is.na(folder_id)) {
     return(NULL)
   }
-  children <- get_children(folder_id)
+  children <- get_files_as_list(folder_id)
   if (length(children) > 0) {
     children_df <- purrr::map_dfr(
       children,
@@ -242,21 +173,26 @@ get_file_data_annots <- function(file_id, file_name, keys) {
 #'              |_ metadata_file_3
 #'
 #' @export
-#' @param parent Parent synID that holds study folders for a model.
+#' @param parent Parent synID that holds study folders for a species.
+#' @param isModel True if generating the table for model studies, else false.
+#' Default is false.
 #' @param keys The names of the columns that are wanted in the table.
 #' @return The master data table.
-generate_model_master_table <- function(parent, keys = c(
+generate_species_master_table <- function(parent, isModel = FALSE, keys = c(
                                           "individualID",
                                           "specimenID",
                                           "assay",
                                           "species",
                                           "study"
                                         )) {
-  metadata_folders <- get_all_metadata_folder_info(parent)
+  metadata_folders <- get_study_metadata_folders(
+    parent_id = parent,
+    isModel = isModel
+  )
   # Get all metadata file information
   metadata_files <- purrr::map2_dfr(
     metadata_folders$id,
-    metadata_folders$study,
+    metadata_folders$name,
     function(id, study) {
       get_metadata_file_info(id, study)
     }
@@ -275,7 +211,11 @@ generate_model_master_table <- function(parent, keys = c(
       dplyr::distinct(study_metadata)
     }
     if (all(c("individualID", "specimenID") %in% names(study_metadata))) {
-      remove_na_rows(study_metadata, c("individualID", "specimenID"))
+      # remove rows where both individualID and specimenID are NA
+      study_metadata <- study_metadata[!(
+        is.na(study_metadata[, "individualID"]) &
+          is.na(study_metadata[, "specimenID"])
+      ), ]
     }
     study_metadata
   })
@@ -301,7 +241,14 @@ generate_model_master_table <- function(parent, keys = c(
 #' @param data Data frame or tibble to join the columns from the fileview with.
 #' @param fileview_id Synapse ID for the fileview.
 #' @param join_cols Columns in the fileview that should be in the master table.
-add_ids_fileview <- function(data, fileview_id, join_cols) {
+add_ids_fileview <- function(data, fileview_id,
+                             join_cols = c(
+                               "individualID",
+                               "specimenID",
+                               "assay",
+                               "species",
+                               "study"
+                             )) {
   # Strip Synapse columns from data if exist
   if (any(c("ROW_ID", "ROW_VERSION") %in% names(data))) {
     data <- data[, !(names(data) %in% c("ROW_ID", "ROW_VERSION"))]
@@ -310,5 +257,90 @@ add_ids_fileview <- function(data, fileview_id, join_cols) {
   view <- synapser::synTableQuery(sprintf("select * from %s", fileview_id))
   view <- view$asDataFrame()
   view <- view[, join_cols]
-  dplyr::full_join(data, view)
+  view$study <- unlist(purrr::map(view$study, function(name) {
+    remove_json_from_string(name)
+  }))
+  # Add rows from view to data, and remove duplicated rows
+  joined <- bind_rows(data, view) %>%
+    dplyr::distinct()
+  return(joined)
+}
+
+# New functions
+get_study_metadata_folders <- function(parent_id, isModel = FALSE) {
+  # Top level folders within parent_id assumed to be study folders
+  study_folders <- get_subfolders_as_list(parent_id = parent_id)
+
+  # Change list into df with just folder name and synID 
+  study_folders <- study_folders %>%
+    purrr::map(purrr::flatten) %>%
+    dplyr::bind_rows() %>%
+    dplyr::select(name, id)
+
+  # If human studies, then need to go down one more level
+  if (!isModel) {
+    study_folders <- get_desired_subfolders(
+      study_df = study_folders,
+      folder_name = "Data"
+    )
+  }
+
+  # Now find the synIDs of the folders named Metadata
+  study_folders <- get_desired_subfolders(
+    study_df <- study_folders,
+    folder_name = "Metadata"
+  )
+
+  # Should be a df with study name, metadata synID
+  return(study_folders)
+}
+
+# Take df of study names, id and map to next level (Data, Metadata)
+get_desired_subfolders <- function(study_df, folder_name) {
+  # Get synIDs of folder_name matched subfolders for each study
+  subfolders <- purrr::map2(
+    study_df$name,
+    study_df$id,
+    function (x, y) {
+      # Get the synID for the subfolder with matched name
+      syn_id <- get_subfolder_id(parent_id = y, folder_name = folder_name)
+      list(name = x, id = syn_id)
+    }) %>%
+    dplyr::bind_rows() # Convert to dataframe
+  return(subfolders)
+}
+
+# Get synID of a subfolder with desired name
+get_subfolder_id <- function(parent_id, folder_name) {
+  if(is.null(parent_id) || is.na(parent_id)) {
+    return(NA)
+  }
+  subfolders <- get_subfolders_as_list(parent_id)
+
+  # If no subfolders, return NULL
+  if(is.null(subfolders) || all(is.na(subfolders))) {
+    return(NA)
+  }
+
+  # Check folder names against desired folder name
+  is_desired_folder <- purrr::map_lgl(
+    subfolders,
+    function(folder) {
+      folder$name == folder_name
+    }
+  )
+
+  # If more than one folder has the name, send NA
+  if (sum(is_desired_folder) > 1) {
+    return(NA)
+  }
+
+  # If one of the folders is the correct name, return the id
+  # else return NULL
+  if (any(is_desired_folder)) {
+    # Gross way to get the id
+    return(subfolders[is_desired_folder][[1]]$id)
+  } else {
+    return(NA)
+  }
 }

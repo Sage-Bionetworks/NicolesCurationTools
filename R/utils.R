@@ -48,3 +48,9 @@ dict_to_list <- function(annotations) {
   values <- purrr::map(names(annotations), function(y) annotations$get(y))
   stats::setNames(values, names(annotations))
 }
+
+# remove json from strings
+remove_json_from_string <- function(data) {
+  gsub("\"+|\\[|\\]| ", "", data)
+}
+

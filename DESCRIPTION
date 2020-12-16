@@ -32,4 +32,4 @@ Suggests:
     lintr,
     styler,
     testthat
-RoxygenNote: 7.0.2
+RoxygenNote: 7.1.1

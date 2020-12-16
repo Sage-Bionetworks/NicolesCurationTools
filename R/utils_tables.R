@@ -1,38 +1,3 @@
-#' @title Remove NA rows
-#'
-#' @description Removes NA rows. If columns is not `NULL`, then will only remove
-#' rows in which all columns given have `NA`. If columns is `NULL`, then will
-#' remove rows that are `NA` across all columns.
-#'
-#' @export
-#' @param data Data frame with metadata
-#' @param columns The columns to compare for `NA` values.
-#' @return The data without rows that are `NA` across the given columns.
-#' @examples
-#' \dontrun{
-#' dat <- data.frame(
-#'   foo = c("bar0", NA, NA, "bar3"),
-#'   bar = c(NA, "foo1", NA, "foo3")
-#' )
-#' dat1 <- remove_na_rows(dat)
-#' dat2 <- remove_na_rows(dat, "foo")
-#' dat3 <- remove_na_rows(dat, c("foo", "bar"))
-#' }
-remove_na_rows <- function(data, columns = NULL) {
-  if (is.null(columns)) {
-    na_rows <- apply(data, 1, function(x) {
-      all(is.na(x))
-    })
-    data[!na_rows, ]
-  } else {
-    na_in_cols <- purrr::map(columns, function(x) {
-      which(is.na(data[x]))
-    })
-    na_rows <- Reduce(intersect, na_in_cols)
-    data[-na_rows, ]
-  }
-}
-
 #' @title Save table to Synapse
 #'
 #' @description Save table to Synapse.

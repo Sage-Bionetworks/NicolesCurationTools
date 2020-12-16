@@ -1,19 +1,34 @@
-#' @title Get children of Synapse folder
+#' @title Get subfolders as list
 #'
-#' @description Get a list of the child folders/files within a Synapse parent
-#' folder.
+#' @description Get the immediate subfolders in a parent folder.
+#'
+#' @param parent_id synID of parent folder 
+#' @return list of subfolders in parent folder
+get_subfolders_as_list <- function(parent_id) {
+  if(is.null(parent_id) || is.na(parent_id)) {
+    return(NA)
+  }
+  synapser::synGetChildren(
+    parent = parent_id,
+    includeTypes = list("folder")
+  )$asList()
+}
+
+#' @title Get files as list
+#'
+#' @description Get a list of the files within a Synapse parent folder.
 #'
 #' @export
 #' @param parent The synID of the parent folder.
-#' @return Synapse entity list with child folders/files.
+#' @return Synapse entity list with child files.
 #' @examples
 #' \dontrun{
 #' library(synapser)
 #' synLogin()
 #' get_children("syn123456")
 #' }
-get_children <- function(parent) {
-  children <- synapser::synGetChildren(parent)
+get_files_as_list <- function(parent) {
+  children <- synapser::synGetChildren(parent, includeTypes = list("file"))
   children$asList()
 }
 

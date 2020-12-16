@@ -2,10 +2,9 @@
 
 export(append_column_study)
 export(dict_to_list)
-export(generate_model_master_table)
-export(get_children)
+export(generate_species_master_table)
 export(get_file_data)
+export(get_files_as_list)
 export(log_into_synapse)
 export(move_folder_file)
-export(remove_na_rows)
 export(save_table_to_synapse)
